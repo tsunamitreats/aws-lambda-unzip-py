@@ -4,15 +4,16 @@ import urllib
 import zipfile
 import boto3
 import io
-
+import re
 
 print('Loading function')
 
 s3 = boto3.client('s3')
-bucket = 'my-bucket'
+bucket = 'mybucket'
 
 def lambda_handler(event, context):
     key = urllib.unquote_plus(event['Records'][0]['s3']['object']['key'].encode('utf8'))
+    folder = re.sub(r"/[A-Za-z\.' 0-9-]*$","",key)
     try:
         obj = s3.get_object(Bucket=bucket, Key=key)
         putObjects = []
@@ -23,7 +24,7 @@ def lambda_handler(event, context):
             # Read the file as a zipfile and process the members
             with zipfile.ZipFile(tf, mode='r') as zipf:
                 for file in zipf.infolist():
-                    fileName = file.filename
+                    fileName = folder + "/" + file.filename
                     putFile = s3.put_object(Bucket=bucket, Key=fileName, Body=zipf.read(file))
                     putObjects.append(putFile)
                     print(putFile)
@@ -31,8 +32,8 @@ def lambda_handler(event, context):
 
         # Delete zip file after unzip
         if len(putObjects) > 0:
-            deletedObj = s3.delete_object(Bucket=bucket, Key=key)
-            print('deleted file:')
+            #deletedObj = s3.delete_object(Bucket=bucket, Key=key)
+            print('deleted file:(disabled for development)')
             print(deletedObj)
 
     except Exception as e:
